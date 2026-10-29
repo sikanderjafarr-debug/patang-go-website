@@ -107,6 +107,12 @@ section.soft { background: var(--bg-soft); }
 .steps li::before { content: counter(step); width: 36px; height: 36px; border-radius: 50%;
   display: grid; place-items: center; font-weight: 700; background: var(--sky); color: #fff; }
 .steps p { color: var(--muted); }
+.services { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 8px 0 0; padding: 0; }
+.services li { list-style: none; border: 1px solid var(--line); border-radius: 16px; padding: 18px;
+  display: grid; gap: 6px; align-content: start; min-width: 0; }
+.services h3 { font-size: 1.05rem; }
+.services p { color: var(--muted); font-size: 0.95rem; }
+.services .price { font-weight: 700; }
 
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
 .split > * { min-width: 0; }
@@ -163,6 +169,7 @@ footer a { color: var(--muted); }
   .hero .wrap { grid-template-columns: 1fr; padding-block: 36px 48px; gap: 28px; }
   .hero-photo { aspect-ratio: 4 / 3; }
   .steps, .split, .contact { grid-template-columns: 1fr; }
+  .services { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   section.band { padding-block: 48px; }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -176,6 +183,7 @@ footer a { color: var(--muted); }
   <div class="wrap">
     <a class="brand" href="./"><svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 2 L36 18 L20 34 L4 18 Z" fill="#0EA5E9"/><path d="M20 2 L36 18 L20 18 Z" fill="#E8A400"/><path d="M4 18 L20 18 L20 34 Z" fill="#E8A400"/><path d="M20 2 V34 M4 18 H36" stroke="#fff" stroke-width="1.5"/><path d="M20 34 q3 3 0 6" stroke="#0EA5E9" stroke-width="1.5" fill="none"/></svg><span class="brand-name">Patang <b>Go</b></span></a>
     <nav class="nav" aria-label="Main">
+      <a href="./#services">Services</a>
       <a href="./#how">How it works</a>
       <a href="./#sellers">For sellers</a>
       <a href="./#rules">Rules</a>
@@ -201,6 +209,7 @@ footer a { color: var(--muted); }
       <a href="privacy.html">Privacy Policy</a>
       <a href="terms.html">Terms of Service</a>
       <a href="refund.html">Refund &amp; Cancellation</a>
+      <a href="service.html">Service Policy</a>
       <a href="advertise.html">Advertise</a>
     </nav>
   </div>

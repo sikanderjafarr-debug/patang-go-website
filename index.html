@@ -107,6 +107,12 @@ section.soft { background: var(--bg-soft); }
 .steps li::before { content: counter(step); width: 36px; height: 36px; border-radius: 50%;
   display: grid; place-items: center; font-weight: 700; background: var(--sky); color: #fff; }
 .steps p { color: var(--muted); }
+.services { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 8px 0 0; padding: 0; }
+.services li { list-style: none; border: 1px solid var(--line); border-radius: 16px; padding: 18px;
+  display: grid; gap: 6px; align-content: start; min-width: 0; }
+.services h3 { font-size: 1.05rem; }
+.services p { color: var(--muted); font-size: 0.95rem; }
+.services .price { font-weight: 700; }
 
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
 .split > * { min-width: 0; }
@@ -163,6 +169,7 @@ footer a { color: var(--muted); }
   .hero .wrap { grid-template-columns: 1fr; padding-block: 36px 48px; gap: 28px; }
   .hero-photo { aspect-ratio: 4 / 3; }
   .steps, .split, .contact { grid-template-columns: 1fr; }
+  .services { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   section.band { padding-block: 48px; }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -176,6 +183,7 @@ footer a { color: var(--muted); }
   <div class="wrap">
     <a class="brand" href="./"><svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 2 L36 18 L20 34 L4 18 Z" fill="#0EA5E9"/><path d="M20 2 L36 18 L20 18 Z" fill="#E8A400"/><path d="M4 18 L20 18 L20 34 Z" fill="#E8A400"/><path d="M20 2 V34 M4 18 H36" stroke="#fff" stroke-width="1.5"/><path d="M20 34 q3 3 0 6" stroke="#0EA5E9" stroke-width="1.5" fill="none"/></svg><span class="brand-name">Patang <b>Go</b></span></a>
     <nav class="nav" aria-label="Main">
+      <a href="./#services">Services</a>
       <a href="./#how">How it works</a>
       <a href="./#sellers">For sellers</a>
       <a href="./#rules">Rules</a>
@@ -218,6 +226,26 @@ footer a { color: var(--muted); }
         <li>It does not operate after Basant. No orders can be placed outside the permitted days.</li>
       </ul>
     </div>
+  </div>
+</section>
+
+<section class="band" id="services">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Services</span>
+      <h2>What Patang Go offers</h2>
+      <p>Patang Go is a mobile app that connects buyers with verified kite shops in Lahore during Basant.</p>
+    </div>
+    <ul class="services">
+      <li><h3>Verified shop listing</h3><p>Kite shops checked by our team list their kites, cotton string and spools with photos and prices.</p><span class="price">Free for shops; 6% on completed orders</span></li>
+      <li><h3>Home delivery orders</h3><p>Order from a nearby shop and get it delivered to your home.</p><span class="price">4% service fee + shop's delivery fee</span></li>
+      <li><h3>Shop pickup orders</h3><p>Pick up from the shop yourself or send a rider. Handed over only with your 4-digit pickup code.</p><span class="price">4% service fee</span></li>
+      <li><h3>Multi-shop cart</h3><p>Order from up to 3 shops at once. Each shop sends its own order.</p><span class="price">4% service fee per order</span></li>
+      <li><h3>Patang Baaz pass</h3><p>Standard pass: silver badge, name on the leaderboard, 5 pecha challenges a day.</p><span class="price">From Rs 1,500 (one Basant day) to Rs 4,000 (3 days)</span></li>
+      <li><h3>Top Patang Baaz pass</h3><p>Premium pass: gold badge, unlimited pecha challenges, your photo on the leaderboard and the Premium Wall.</p><span class="price">From Rs 2,500 (one Basant day) to Rs 6,000 (3 days)</span></li>
+      <li><h3>Pecha Challenge</h3><p>On Basant days, challenge pass holders within 1 km to a friendly kite match. 18+ only, cotton string only, no betting.</p><span class="price">Included with a pass</span></li>
+      <li><h3>Sponsored ads</h3><p>Brands can sponsor the Basant season in the app. Every ad is marked “Sponsored”.</p><span class="price"><a href="advertise.html">Packages on request</a></span></li>
+    </ul>
   </div>
 </section>
 
@@ -292,9 +320,8 @@ footer a { color: var(--muted); }
       <p>For help with an order, a shop listing, or a report about unsafe string.</p>
     </div>
     <div class="contact">
-      <div><span class="label">Email</span><span class="value">support@patang-go.com</span></div>
-      <div><span class="label">City</span><span class="value">Lahore, Punjab, Pakistan</span></div>
-      <div><span class="label">Season</span><span class="value">Basant only, on government-permitted days</span></div>
+      <div><span class="label">Email</span><span class="value"><a href="mailto:support@patang-go.com">support@patang-go.com</a></span></div>
+      <div><span class="label">Phone</span><span class="value"><a href="tel:+923224191984">0322-4191984</a></span></div>
     </div>
   </div>
 </section>
@@ -308,6 +335,7 @@ footer a { color: var(--muted); }
       <a href="privacy.html">Privacy Policy</a>
       <a href="terms.html">Terms of Service</a>
       <a href="refund.html">Refund &amp; Cancellation</a>
+      <a href="service.html">Service Policy</a>
       <a href="advertise.html">Advertise</a>
     </nav>
   </div>
