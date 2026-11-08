@@ -93,7 +93,7 @@ import { matchStatement, underpaidMessage, whatsappLink, passWindow } from './js
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { doc, getDoc, setDoc, updateDoc, getDocs, collection, query, where, orderBy, limit,
-  serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+  serverTimestamp, Timestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const $ = (id) => document.getElementById(id);
 const auth = getAuth(app);
@@ -197,15 +197,36 @@ async function grantTo(email, o) {
   if (snap.empty) return false;
   const u = snap.docs[0];
   const { from, until } = passWindow(o.fromDay, o.days);
-  await setDoc(doc(db, 'memberships', u.id), {
+  const pass = (no) => ({
     name: (u.data().name || '').trim() || 'Patang Baaz',
     tier: o.tier,
     kind: o.days >= 3 ? 'season' : (o.days === 1 ? 'day' : 'remaining'),
     validFrom: Timestamp.fromDate(from),
     validUntil: Timestamp.fromDate(until),
     price: o.unitPrice,
+    ...(no ? { founderNo: no } : {}),
     grantedAt: serverTimestamp(),
   });
+  // Pass aur Founding Patang Baaz number (pehle 1,000) ek saath, app jaisa.
+  try {
+    await runTransaction(db, async (tx) => {
+      const fRef = doc(db, 'founders', u.id), cRef = doc(db, 'stats', 'founders');
+      const f = await tx.get(fRef), c = await tx.get(cRef);
+      let no = Number(f.data()?.no || 0);
+      if (!no) {
+        const count = Number(c.data()?.count || 0);
+        if (count < 1000) {
+          no = count + 1;
+          tx.set(cRef, { count: no });
+          tx.set(fRef, { no });
+        }
+      }
+      tx.set(doc(db, 'memberships', u.id), pass(no));
+    });
+  } catch (e) {
+    // Purane rules (Founding wale abhi publish nahi): pass phir bhi mile.
+    await setDoc(doc(db, 'memberships', u.id), pass(0));
+  }
   const photo = await getDoc(doc(db, 'memberPhotos', u.id)).catch(() => null);
   if (photo?.data()?.status === 'approved') {
     await updateDoc(doc(db, 'memberPhotos', u.id), {

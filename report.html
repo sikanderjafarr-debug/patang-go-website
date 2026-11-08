@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Your Ad Report</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="pass.css">
+<style>
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+@media (max-width: 460px) { .stats { grid-template-columns: 1fr; } }
+.stat { background: var(--bg-soft); border-radius: 12px; padding: 12px; }
+.stat span { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.stat b { font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+.bar { height: 10px; border-radius: 6px; background: var(--line); overflow: hidden; margin-top: 6px; }
+.bar i { display: block; height: 100%; background: var(--sky); }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+th { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.tablewrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><span class="brand-name">Patang <b>Go</b></span></a>
+  </div>
+</header>
+<main class="wrap">
+  <div id="view" class="status"><p>Loading your report…</p></div>
+</main>
+<footer>
+  <div class="wrap">
+    <p>This report is private: only people with this link can open it. We never share buyers' names, phone numbers or locations.</p>
+  </div>
+</footer>
+<script type="module">
+import { db, esc } from './js/fb.mjs';
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const $ = (id) => document.getElementById(id);
+const n = (x) => Number(x || 0).toLocaleString('en-PK');
+const day = (s) => {
+  const d = new Date(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8));
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+const date = (t) => t?.toDate ? t.toDate().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+
+async function start() {
+  const key = new URLSearchParams(location.search).get('k') || '';
+  if (!/^[A-Za-z0-9]{20}$/.test(key)) {
+    $('view').innerHTML = '<h1>Report not found</h1><p class="lead">Please check the link you received from Patang Go.</p>';
+    return;
+  }
+  let snap;
+  try { snap = await getDoc(doc(db, 'adReports', key)); }
+  catch (e) { $('view').innerHTML = '<p>Could not load the report. Please check your internet and refresh.</p>'; return; }
+  if (!snap.exists()) {
+    $('view').innerHTML = '<h1>Report not ready yet</h1><p class="lead">Your report will appear here once your ad starts. Please check again later.</p>';
+    return;
+  }
+  const r = snap.data();
+  const days = Object.entries(r.days || {}).sort((a, b) => b[0].localeCompare(a[0]));
+  const bought = Number(r.maxViews || 0);
+  const pct = bought > 0 ? Math.min(100, Math.round((Number(r.views || 0) / bought) * 100)) : 0;
+  $('view').className = '';
+  $('view').innerHTML = `
+    <h1>${esc(r.sponsor)}</h1>
+    <p class="lead">${esc(r.placement)} · ${esc(date(r.startAt))} – ${esc(date(r.endAt))}</p>
+    <div class="stats">
+      <div class="stat"><span>People reached</span><b>${n(r.reach)}</b></div>
+      <div class="stat"><span>Times shown</span><b>${n(r.views)}</b></div>
+      <div class="stat"><span>Taps</span><b>${n(r.clicks)}</b></div>
+    </div>
+    ${bought > 0 ? `<div class="step"><b>Views bought: ${n(r.views)} of ${n(bought)} (${pct}%)</b>
+      <div class="bar"><i style="width:${pct}%"></i></div></div>` : ''}
+    <section class="step">
+      <h2>Day by day</h2>
+      ${days.length ? `<div class="tablewrap"><table>
+        <tr><th>Day</th><th>People</th><th>Shown</th><th>Taps</th></tr>
+        ${days.map(([d, v]) => `<tr><td>${esc(day(d))}</td><td>${n(v.r)}</td><td>${n(v.v)}</td><td>${n(v.c)}</td></tr>`).join('')}
+      </table></div>` : '<p class="hint">No days yet.</p>'}
+    </section>
+    <p class="hint">Last updated: ${esc(r.updatedAt?.toDate ? r.updatedAt.toDate().toLocaleString('en-GB') : '')}. Each person is counted at most 5 times a day.</p>`;
+}
+start();
+</script>
+</body>
+</html>
