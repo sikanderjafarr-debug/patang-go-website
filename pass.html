@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Patang Go Pass</title>
+<meta name="description" content="Buy your Patang Go Pass for Basant: scan the QR, pay from any bank app, done.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="pass.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 2 L36 18 L20 34 L4 18 Z" fill="#0EA5E9"/><path d="M20 2 L36 18 L20 18 Z" fill="#E8A400"/><path d="M4 18 L20 18 L20 34 Z" fill="#E8A400"/><path d="M20 2 V34 M4 18 H36" stroke="#fff" stroke-width="1.5"/><path d="M20 34 q3 3 0 6" stroke="#0EA5E9" stroke-width="1.5" fill="none"/></svg><span class="brand-name">Patang <b>Go</b></span></a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="loading" class="status"><p>Loading…</p></div>
+
+  <!-- Bikri band -->
+  <div id="closed" class="status hidden">
+    <div class="big">🪁</div>
+    <h1>Pass sales open soon</h1>
+    <p class="lead" id="closedText">Please check back in a few days.</p>
+  </div>
+
+  <!-- Order ka haal (pass.html?order=CODE) -->
+  <div id="statusView" class="hidden"></div>
+
+  <!-- Khareedna -->
+  <form id="buy" class="hidden" novalidate>
+    <h1>Get your Patang Go Pass</h1>
+    <p class="lead">Scan the QR, pay from any bank app, and you're done. Your pass shows in the Patang Go app with a countdown.</p>
+
+    <section class="step">
+      <h2><span class="num">1</span> Choose your pass</h2>
+      <div class="choices two" id="tiers"></div>
+      <label class="field">How many days?</label>
+      <div class="choices three" id="daysBox"></div>
+      <label class="field">First day</label>
+      <div class="choices three" id="fromBox"></div>
+    </section>
+
+    <section class="step">
+      <h2><span class="num">2</span> Who is it for?</h2>
+      <label class="field" for="emails">Gmail addresses</label>
+      <textarea id="emails" placeholder="yourname@gmail.com&#10;friend@gmail.com" autocomplete="email" inputmode="email"></textarea>
+      <p class="hint">One Gmail per line. Add your friends too: each Gmail gets its own pass. Use the same Gmail you sign in to Patang Go with.</p>
+      <p class="err" id="emailErr"></p>
+      <div class="total"><span id="totalLine">1 pass</span><strong id="total">Rs 0</strong></div>
+    </section>
+
+    <section class="step">
+      <h2><span class="num">3</span> Pay <span id="payAmount" class="price"></span></h2>
+      <div class="pay">
+        <img id="qr" class="qr" alt="Payment QR code for the PATANG-GO account at Bank Alfalah">
+        <div>
+          <div class="copyrow"><div><span>Account name</span><b id="accTitle">PATANG-GO</b></div></div>
+          <div class="copyrow"><div><span>Bank</span><b id="bankName">Bank Alfalah</b></div></div>
+          <div class="copyrow"><div><span>IBAN</span><b id="iban">PK75ALFH5953005003122533</b></div>
+            <button type="button" class="btn btn-line btn-small" data-copy="iban">Copy</button></div>
+          <div class="copyrow hidden" id="raastRow"><div><span>Raast ID</span><b id="raastId"></b></div>
+            <button type="button" class="btn btn-line btn-small" data-copy="raastId">Copy</button></div>
+          <div class="copyrow"><div><span>Amount</span><b id="amountCopy"></b></div>
+            <button type="button" class="btn btn-line btn-small" data-copy="amountCopy">Copy</button></div>
+        </div>
+      </div>
+      <ol class="how">
+        <li>Open JazzCash, Easypaisa or your bank app.</li>
+        <li>Tap <b>Scan QR</b> and scan this code. Or choose <b>Send to IBAN</b> and paste the IBAN.</li>
+        <li>Pay exactly <b id="payAgain"></b>. Keep the receipt screen open.</li>
+      </ol>
+      <p class="note">If you pay less by mistake, we will WhatsApp you to send the rest or we return your money.</p>
+    </section>
+
+    <section class="step">
+      <h2><span class="num">4</span> Tell us about your payment</h2>
+      <p class="hint">Copy these from your receipt.</p>
+      <label class="field" for="payerName">Your name (as on your account)</label>
+      <input type="text" id="payerName" autocomplete="name" maxlength="60">
+      <label class="field" for="paidAmount">Amount you paid (Rs)</label>
+      <input type="number" id="paidAmount" inputmode="numeric" min="1">
+      <label class="field" for="payerRef">Transaction ID / TID / Ref number</label>
+      <input type="text" id="payerRef" maxlength="60" placeholder="e.g. 558812345">
+      <label class="field" for="payerPhone">Number you paid from <span class="hint">(JazzCash / Easypaisa / mobile, if no Ref)</span></label>
+      <input type="tel" id="payerPhone" maxlength="20" placeholder="0300 1234567">
+      <label class="field" for="paidOn">Date you paid</label>
+      <input type="date" id="paidOn">
+      <label class="field" for="whatsapp">Your WhatsApp number</label>
+      <input type="tel" id="whatsapp" maxlength="16" placeholder="0300 1234567">
+      <p class="hint">Only if we need to ask about your payment.</p>
+      <p class="err" id="formErr"></p>
+      <button type="submit" class="btn btn-gold block" id="submit">I have paid: confirm my order</button>
+    </section>
+    <p class="hint">Passes are checked 2–3 times a day. Please check your pass type and Basant day before you pay.</p>
+  </form>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="terms.html">Terms</a><a href="refund.html">Refunds</a><a href="privacy.html">Privacy</a>
+    <p>© 2026 Patang Go · Lahore. No prizes, fame only. Kite flying only on the days the government allows.</p>
+  </div>
+</footer>
+
+<script type="module">
+import { db, TIERS, rs, marchDay, passLine, esc } from './js/fb.mjs';
+import { newOrderCode, parseEmails } from './js/matcher.mjs';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const $ = (id) => document.getElementById(id);
+const show = (id) => {
+  for (const s of ['loading', 'closed', 'statusView', 'buy']) $(s).classList.toggle('hidden', s !== id);
+};
+
+// Pakistan ki aaj ki tareekh, aur Basant ka din (0 = pehle, 4 = guzar gaya).
+function pktToday() {
+  const d = new Date(Date.now() + 5 * 3600000);
+  return d.toISOString().slice(0, 10);
+}
+function basantDayNow() {
+  const t = pktToday();
+  if (t < '2027-03-12') return 0;
+  if (t > '2027-03-14') return 4;
+  return Number(t.slice(8, 10)) - 11;
+}
+
+const state = { tier: 'standard', days: 3, fromDay: 1, cfg: null };
+
+function price(tier, days) {
+  return Number(state.cfg?.prices?.[`${tier}_${days}`] || 0);
+}
+
+function renderChoices() {
+  const today = basantDayNow();
+  const minDay = Math.max(1, today);
+  if (state.fromDay < minDay) state.fromDay = minDay;
+  if (state.fromDay + state.days > 4) state.days = 4 - state.fromDay;
+  $('tiers').innerHTML = Object.entries(TIERS).map(([k, t]) => `
+    <label class="choice"><input type="radio" name="tier" value="${k}" ${state.tier === k ? 'checked' : ''}>
+      <b>${t.name}</b><small>${t.perks}</small>
+      <span class="price">from ${rs(price(k, 1))}</span></label>`).join('');
+  $('daysBox').innerHTML = [1, 2, 3].map((d) => `
+    <label class="choice"><input type="radio" name="days" value="${d}" ${state.days === d ? 'checked' : ''}
+      ${state.fromDay + d > 4 ? 'disabled' : ''}>
+      <b>${d === 1 ? '1 day' : d + ' days'}</b><span class="price">${rs(price(state.tier, d))}</span></label>`).join('');
+  $('fromBox').innerHTML = [1, 2, 3].map((f) => `
+    <label class="choice"><input type="radio" name="from" value="${f}" ${state.fromDay === f ? 'checked' : ''}
+      ${f < minDay ? 'disabled' : ''}><b>${marchDay(f)}</b></label>`).join('');
+  renderTotal();
+}
+
+function renderTotal() {
+  const { good, bad } = parseEmails($('emails').value);
+  const n = Math.max(good.length, 1);
+  const unit = price(state.tier, state.days);
+  const total = unit * n;
+  $('totalLine').textContent = `${n} pass${n === 1 ? '' : 'es'} × ${rs(unit)}`;
+  $('total').textContent = rs(total);
+  $('payAmount').textContent = rs(total);
+  $('amountCopy').textContent = String(total);
+  $('payAgain').textContent = rs(total);
+  $('emailErr').textContent = bad.length ? `Please check: ${bad.join(', ')}` :
+    (good.length > 20 ? 'Up to 20 Gmails in one order, please.' : '');
+  return { good, bad, unit, total };
+}
+
+$('buy').addEventListener('change', (e) => {
+  const t = e.target;
+  if (t.name === 'tier') state.tier = t.value;
+  if (t.name === 'days') state.days = Number(t.value);
+  if (t.name === 'from') state.fromDay = Number(t.value);
+  if (['tier', 'days', 'from'].includes(t.name)) renderChoices();
+});
+$('emails').addEventListener('input', renderTotal);
+
+document.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($(b.dataset.copy).textContent.trim());
+    b.textContent = 'Copied';
+    setTimeout(() => (b.textContent = 'Copy'), 1500);
+  } catch { /* purana browser: user khud copy kare */ }
+}));
+
+$('buy').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = (m) => { $('formErr').textContent = m; };
+  const { good, bad, unit, total } = renderTotal();
+  const name = $('payerName').value.trim();
+  const paid = Math.round(Number($('paidAmount').value));
+  const ref = $('payerRef').value.trim();
+  const phone = $('payerPhone').value.trim();
+  const wa = $('whatsapp').value.trim();
+  const paidOn = $('paidOn').value;
+  if (good.length === 0 || bad.length) return err('Please write at least one correct Gmail.');
+  if (good.length > 20) return err('Up to 20 Gmails in one order, please.');
+  if (!unit) return err('This pass is not on sale right now.');
+  if (name.length < 2) return err('Please write your name as on your account.');
+  if (!(paid > 0)) return err('Please write the amount you paid.');
+  if (ref.length < 4 && phone.replace(/\D/g, '').length < 10) {
+    return err('Please write the Transaction ID / Ref, or the number you paid from.');
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(paidOn)) return err('Please choose the date you paid.');
+  if (!/^\+?[0-9 -]{10,16}$/.test(wa)) return err('Please write your WhatsApp number, like 0300 1234567.');
+  if (paid > total && !confirm(`You paid more than ${rs(total)}. Continue?`)) return;
+  err('');
+  $('submit').disabled = true;
+  $('submit').textContent = 'Sending…';
+  const code = newOrderCode(() => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32);
+  try {
+    await setDoc(doc(db, 'webPassOrders', code), {
+      tier: state.tier, days: state.days, fromDay: state.fromDay, emails: good,
+      unitPrice: unit, total, paidAmount: paid, payerName: name, payerRef: ref,
+      payerPhone: phone, paidOn, whatsapp: wa, status: 'pending', createdAt: serverTimestamp(),
+    });
+    try { localStorage.setItem('patanggo.lastOrder', code); } catch { /* koi baat nahi */ }
+    history.replaceState(null, '', `?order=${code}`);
+    watchOrder(code);
+  } catch (ex) {
+    console.error(ex);
+    err('Could not send. Please check your internet and try again.');
+    $('submit').disabled = false;
+    $('submit').textContent = 'I have paid: confirm my order';
+  }
+});
+
+const STATUS = {
+  pending: ['⏳', 'We are checking your payment', 'This usually takes a few hours. You can close this page: your pass will show in the Patang Go app once it is confirmed.'],
+  check: ['⏳', 'We are checking your payment', 'This one needs a closer look. If we need anything, we will WhatsApp you.'],
+  approved: ['✅', 'Your pass is confirmed', 'Open the Patang Go app and sign in with your Gmail. Your pass shows there with a countdown to Basant.'],
+  underpaid: ['⚠️', 'Payment was less than the price', 'We will WhatsApp you: send the rest, or we return your money.'],
+  refunded: ['↩️', 'Your money was returned', 'This order is closed.'],
+  rejected: ['❌', 'We could not find this payment', 'If you did pay, please WhatsApp us with your receipt and this order code.'],
+};
+
+function watchOrder(code) {
+  show('statusView');
+  $('statusView').innerHTML = '<div class="status"><p>Loading your order…</p></div>';
+  onSnapshot(doc(db, 'webPassOrders', code), (snap) => {
+    if (!snap.exists()) {
+      $('statusView').innerHTML = `<div class="status"><div class="big">🔎</div>
+        <h1>Order not found</h1><p class="lead">Please check the link. <a href="pass.html">Buy a pass</a></p></div>`;
+      return;
+    }
+    const o = snap.data();
+    const [icon, title, text] = STATUS[o.status] || STATUS.pending;
+    const waiting = o.status === 'approved' && (o.waiting || []).length
+      ? `<p class="note">These Gmails must sign in to Patang Go once to get their pass: <b>${o.waiting.map(esc).join(', ')}</b></p>` : '';
+    const wa = state.cfg?.whatsapp
+      ? `<p class="hint">Questions? WhatsApp ${esc(state.cfg.whatsapp)}</p>` : '';
+    $('statusView').innerHTML = `
+      <div class="status">
+        <div class="big">${icon}</div>
+        <h1>${title}</h1>
+        <p class="lead">${text}</p>
+        <p>Order code<br><span class="code">${esc(code)}</span></p>
+      </div>
+      <div class="step">
+        <p><b>${esc(passLine(o))}</b></p>
+        <p class="hint">${(o.emails || []).map(esc).join('<br>')}</p>
+        <div class="total"><span>Total</span><strong>${rs(o.total)}</strong></div>
+        ${waiting}
+        <p class="note ${o.status === 'approved' ? 'okbox' : ''}">Save this page's link to check again later.</p>
+        ${wa}
+      </div>
+      <p style="text-align:center"><a href="pass.html">Buy another pass</a></p>`;
+  }, () => {
+    $('statusView').innerHTML = '<div class="status"><p>Could not load. Please refresh.</p></div>';
+  });
+}
+
+async function start() {
+  try {
+    const snap = await getDoc(doc(db, 'public', 'webPass'));
+    state.cfg = snap.exists() ? snap.data() : null;
+  } catch (e) {
+    console.error(e);
+  }
+  const code = new URLSearchParams(location.search).get('order');
+  if (code && /^PG[A-Z2-9]{8}$/.test(code)) return watchOrder(code);
+  if (!state.cfg?.open || basantDayNow() === 4) {
+    $('closedText').textContent = basantDayNow() === 4
+      ? 'Basant is over. See you next year!' : 'Please check back in a few days.';
+    return show('closed');
+  }
+  // Patang Go ka QR aur IBAN page mein pehle se hain; Admin Settings badle to wo.
+  $('qr').src = state.cfg.qr || 'img/patang-go-qr.png';
+  if (state.cfg.accountTitle) $('accTitle').textContent = state.cfg.accountTitle;
+  if (state.cfg.bankName) $('bankName').textContent = state.cfg.bankName;
+  $('raastId').textContent = state.cfg.raastId || '';
+  $('raastRow').classList.toggle('hidden', !state.cfg.raastId);
+  $('paidOn').value = pktToday();
+  try {
+    const last = localStorage.getItem('patanggo.lastOrder');
+    if (last) {
+      const p = document.createElement('p');
+      p.className = 'note';
+      p.innerHTML = `Already ordered? <a href="?order=${esc(last)}">See your last order</a>`;
+      $('buy').insertBefore(p, $('buy').children[2]);
+    }
+  } catch { /* koi baat nahi */ }
+  renderChoices();
+  show('buy');
+}
+start();
+</script>
+</body>
+</html>

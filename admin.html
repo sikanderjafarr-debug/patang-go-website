@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pass Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="pass.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap wide">
+    <span class="brand"><span class="brand-name">Patang <b>Go</b> · Pass admin</span></span>
+    <button class="btn btn-line btn-small hidden" id="signOut">Sign out</button>
+  </div>
+</header>
+<main class="wrap wide">
+  <div id="signIn" class="status">
+    <h1>Admin sign in</h1>
+    <p class="lead">Use the admin Gmail of the Patang Go app.</p>
+    <button class="btn btn-sky" id="google">Sign in with Google</button>
+    <p class="err" id="signErr"></p>
+  </div>
+
+  <div id="panel" class="hidden">
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="orders" aria-selected="true">Orders</button>
+      <button role="tab" data-tab="statement" aria-selected="false">Upload statement</button>
+      <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
+    </div>
+
+    <!-- Orders -->
+    <section id="tab-orders">
+      <div class="actions"><button class="btn btn-line btn-small" id="reload">Refresh</button>
+        <button class="btn btn-line btn-small" id="retryWaiting">Give waiting passes</button></div>
+      <p class="err" id="ordersMsg"></p>
+      <div id="orders"></div>
+    </section>
+
+    <!-- Statement -->
+    <section id="tab-statement" class="hidden">
+      <div class="step">
+        <h2><span class="num">1</span> Upload bank statement</h2>
+        <p class="hint">PDF, Excel (.xlsx / .xls) or CSV. Upload 2–3 times a day.</p>
+        <input type="file" id="file" accept=".pdf,.xlsx,.xls,.csv,.txt">
+        <p class="hint" id="fileInfo"></p>
+      </div>
+      <div class="step">
+        <h2><span class="num">2</span> Match</h2>
+        <p class="hint">A pass is approved only when the amount AND a Ref/TID (or the number + date) match. Name alone is never enough.</p>
+        <button class="btn btn-sky" id="match" disabled>Match with orders</button>
+        <div id="result"></div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section id="tab-settings" class="hidden">
+      <form class="step" id="settings">
+        <h2>Website pass settings</h2>
+        <label class="choice" style="max-width:320px"><input type="checkbox" id="open"> <b>Sales open</b>
+          <small>Untick to stop new orders.</small></label>
+        <label class="field">Prices (Rs)</label>
+        <div class="grid6">
+          <label>Standard 1 day<input type="number" id="standard_1"></label>
+          <label>Standard 2 days<input type="number" id="standard_2"></label>
+          <label>Standard 3 days<input type="number" id="standard_3"></label>
+          <label>Premium 1 day<input type="number" id="premium_1"></label>
+          <label>Premium 2 days<input type="number" id="premium_2"></label>
+          <label>Premium 3 days<input type="number" id="premium_3"></label>
+        </div>
+        <label class="field" for="raastId">Raast ID (optional, leave empty for the PATANG-GO account)</label>
+        <input type="text" id="raastId" maxlength="40">
+        <label class="field" for="accountTitle">Account name</label>
+        <input type="text" id="accountTitle" maxlength="80">
+        <label class="field" for="bankName">Bank</label>
+        <input type="text" id="bankName" maxlength="60">
+        <label class="field" for="whatsappNo">WhatsApp for questions</label>
+        <input type="tel" id="whatsappNo" maxlength="20">
+        <label class="field" for="qrFile">Payment QR picture (optional: the PATANG-GO QR is already on the page)</label>
+        <input type="file" id="qrFile" accept="image/*">
+        <img id="qrPreview" class="qr hidden" alt="QR preview" style="margin-top:8px">
+        <p class="err" id="setMsg"></p>
+        <button class="btn btn-gold" type="submit">Save</button>
+      </form>
+    </section>
+  </div>
+</main>
+
+<script type="module">
+import { app, db, rs, passLine, esc } from './js/fb.mjs';
+import { matchStatement, underpaidMessage, whatsappLink, passWindow } from './js/matcher.mjs';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { doc, getDoc, setDoc, updateDoc, getDocs, collection, query, where, orderBy, limit,
+  serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const $ = (id) => document.getElementById(id);
+const auth = getAuth(app);
+let orders = [];
+let lines = [];
+
+$('google').onclick = async () => {
+  $('signErr').textContent = '';
+  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch (e) { $('signErr').textContent = 'Sign in failed: ' + (e.code || e.message); }
+};
+$('signOut').onclick = () => signOut(auth);
+
+onAuthStateChanged(auth, async (user) => {
+  $('signOut').classList.toggle('hidden', !user);
+  if (!user) { $('signIn').classList.remove('hidden'); $('panel').classList.add('hidden'); return; }
+  const me = await getDoc(doc(db, 'users', user.uid)).catch(() => null);
+  if (me?.data()?.role !== 'admin') {
+    $('signErr').textContent = 'This Gmail is not the Patang Go admin.';
+    await signOut(auth);
+    return;
+  }
+  $('signIn').classList.add('hidden');
+  $('panel').classList.remove('hidden');
+  loadOrders();
+  loadSettings();
+});
+
+document.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('[data-tab]').forEach((x) => x.setAttribute('aria-selected', x === b));
+  for (const t of ['orders', 'statement', 'settings']) $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab);
+});
+
+// ---------- Orders ----------
+async function loadOrders() {
+  const q = query(collection(db, 'webPassOrders'), orderBy('createdAt', 'desc'), limit(1000));
+  const snap = await getDocs(q);
+  orders = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  renderOrders();
+}
+$('reload').onclick = loadOrders;
+
+const GROUPS = [
+  ['pending', 'Pending'], ['check', 'Check by hand'], ['underpaid', 'Underpaid'],
+  ['approved', 'Approved'], ['refunded', 'Refunded'], ['rejected', 'Rejected'],
+];
+
+function orderCard(o) {
+  const when = o.createdAt?.toDate?.().toLocaleString('en-PK') ?? '';
+  const btn = (act, label, cls = 'btn-line') =>
+    `<button class="btn ${cls} btn-small" data-act="${act}" data-id="${o.id}">${label}</button>`;
+  let actions = '';
+  if (['pending', 'check'].includes(o.status)) actions = btn('approve', 'Approve', 'btn-gold') + btn('reject', 'Reject');
+  if (o.status === 'underpaid') {
+    const msg = underpaidMessage({ code: o.id, paid: o.receivedAmount || o.paidAmount, total: o.total, passLine: passLine(o) });
+    actions = `<a class="btn btn-sky btn-small" target="_blank" rel="noopener" href="${whatsappLink(o.whatsapp, msg)}">WhatsApp message</a>` +
+      btn('approve', 'Rest received: approve', 'btn-gold') + btn('refunded', 'Mark refunded');
+  }
+  const waiting = (o.waiting || []).length ? `<p class="meta">Waiting to join: ${o.waiting.map(esc).join(', ')}</p>` : '';
+  return `<div class="order"><header><b>${esc(o.id)} · ${esc(passLine(o))}</b><span class="pill">${rs(o.total)}</span></header>
+    <p class="meta">${esc(o.payerName)} · paid ${rs(o.paidAmount)} on ${esc(o.paidOn)} · Ref ${esc(o.payerRef || '–')} · from ${esc(o.payerPhone || '–')} · WhatsApp ${esc(o.whatsapp)} · ${esc(when)}</p>
+    <p class="meta">${(o.emails || []).map(esc).join(', ')}</p>
+    ${o.matchedLine ? `<div class="line">${esc(o.matchedLine)}</div>` : ''}
+    ${o.reason ? `<p class="meta">⚠ ${esc(o.reason)}</p>` : ''}${waiting}
+    <div class="actions">${actions}</div></div>`;
+}
+
+function renderOrders() {
+  $('orders').innerHTML = GROUPS.map(([k, title]) => {
+    const list = orders.filter((o) => o.status === k);
+    if (!list.length && !['pending', 'check', 'underpaid'].includes(k)) return '';
+    return `<h2>${title} (${list.length})</h2>` +
+      (list.length ? list.slice(0, k === 'approved' ? 50 : 500).map(orderCard).join('') : '<p class="hint">None.</p>');
+  }).join('');
+}
+
+$('orders').onclick = async (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const o = orders.find((x) => x.id === b.dataset.id);
+  b.disabled = true;
+  try {
+    if (b.dataset.act === 'approve') await approve(o, o.matchedLine || 'Approved by hand');
+    if (b.dataset.act === 'reject') await setStatus(o, { status: 'rejected' });
+    if (b.dataset.act === 'refunded') await setStatus(o, { status: 'refunded' });
+    renderOrders();
+  } catch (ex) {
+    $('ordersMsg').textContent = 'Error: ' + ex.message;
+    b.disabled = false;
+  }
+};
+
+async function setStatus(o, fields) {
+  await updateDoc(doc(db, 'webPassOrders', o.id), { ...fields, reviewedAt: serverTimestamp() });
+  Object.assign(o, fields);
+}
+
+// Gmail wale account par pass (app ke grantPass jaisa).
+async function grantTo(email, o) {
+  const snap = await getDocs(query(collection(db, 'users'), where('email', '==', email), limit(1)));
+  if (snap.empty) return false;
+  const u = snap.docs[0];
+  const { from, until } = passWindow(o.fromDay, o.days);
+  await setDoc(doc(db, 'memberships', u.id), {
+    name: (u.data().name || '').trim() || 'Patang Baaz',
+    tier: o.tier,
+    kind: o.days >= 3 ? 'season' : (o.days === 1 ? 'day' : 'remaining'),
+    validFrom: Timestamp.fromDate(from),
+    validUntil: Timestamp.fromDate(until),
+    price: o.unitPrice,
+    grantedAt: serverTimestamp(),
+  });
+  const photo = await getDoc(doc(db, 'memberPhotos', u.id)).catch(() => null);
+  if (photo?.data()?.status === 'approved') {
+    await updateDoc(doc(db, 'memberPhotos', u.id), {
+      validUntil: Timestamp.fromDate(o.tier === 'premium' ? until : new Date()),
+      reviewedAt: serverTimestamp(),
+    });
+  }
+  return true;
+}
+
+async function approve(o, line) {
+  const todo = o.status === 'approved' ? (o.waiting || []) : (o.emails || []);
+  const granted = [...(o.granted || [])], waiting = [];
+  for (const e of todo) (await grantTo(e, o)) ? granted.push(e) : waiting.push(e);
+  await setStatus(o, { status: 'approved', matchedLine: String(line).slice(0, 500), granted, waiting });
+}
+
+$('retryWaiting').onclick = async () => {
+  const list = orders.filter((o) => o.status === 'approved' && (o.waiting || []).length);
+  let n = 0;
+  for (const o of list) {
+    const before = o.waiting.length;
+    await approve(o, o.matchedLine);
+    n += before - o.waiting.length;
+  }
+  $('ordersMsg').textContent = `${n} more passes given.`;
+  renderOrders();
+};
+
+// ---------- Statement ----------
+function loadScript(src) {
+  return new Promise((ok, bad) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = ok; s.onerror = bad;
+    document.head.appendChild(s);
+  });
+}
+
+async function readLines(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.pdf')) {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+    const pdfjs = window.pdfjsLib;
+    pdfjs.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+    const out = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const items = (await (await pdf.getPage(p)).getTextContent()).items;
+      const rows = new Map();
+      for (const it of items) {
+        const y = Math.round(it.transform[5] / 3);
+        if (!rows.has(y)) rows.set(y, []);
+        rows.get(y).push(it);
+      }
+      [...rows.entries()].sort((a, b) => b[0] - a[0]).forEach(([, r]) =>
+        out.push(r.sort((a, b) => a.transform[4] - b.transform[4]).map((i) => i.str).join(' ')));
+    }
+    return out;
+  }
+  if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+    const wb = window.XLSX.read(await file.arrayBuffer());
+    const out = [];
+    for (const sn of wb.SheetNames) {
+      for (const row of window.XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: false })) {
+        out.push(row.filter((c) => c != null && c !== '').join(' '));
+      }
+    }
+    return out;
+  }
+  return (await file.text()).split(/\r?\n/).map(csvRow);
+}
+
+// CSV ki ek line: "2,495.00" jaise khane saath rahein; khane " | " se jude.
+function csvRow(line) {
+  const cells = [];
+  let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) {
+      if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (c === '"') q = false;
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ',' || c === ';' || c === '\t') { cells.push(cur.trim()); cur = ''; }
+    else cur += c;
+  }
+  cells.push(cur.trim());
+  return cells.filter(Boolean).join(' | ');
+}
+
+$('file').onchange = async () => {
+  const f = $('file').files[0];
+  $('result').innerHTML = '';
+  if (!f) return;
+  $('fileInfo').textContent = 'Reading…';
+  try {
+    lines = (await readLines(f)).filter((l) => l.trim());
+    $('fileInfo').textContent = `${lines.length} lines read from ${f.name}.`;
+    $('match').disabled = lines.length === 0;
+  } catch (e) {
+    $('fileInfo').textContent = 'Could not read this file: ' + e.message;
+  }
+};
+
+let lastResult = null;
+$('match').onclick = async () => {
+  if (!orders.length) await loadOrders();
+  const open = orders.filter((o) => ['pending', 'check'].includes(o.status));
+  const done = orders.filter((o) => o.status === 'approved' || o.status === 'underpaid');
+  lastResult = matchStatement(lines, open, {
+    usedRefs: done.map((o) => o.payerRef).filter(Boolean),
+    usedLines: done.map((o) => o.matchedLine).filter(Boolean),
+  });
+  const r = lastResult;
+  const row = (x, extra = '') => `<div class="order"><b>${esc(x.order.id)} · ${esc(passLine(x.order))} · ${rs(x.order.total)}</b>
+    <p class="meta">${esc(x.order.payerName)} · Ref ${esc(x.order.payerRef || '–')} · ${esc(x.order.payerPhone || '–')}</p>
+    ${x.line ? `<div class="line">${esc(x.line)}</div>` : ''}${extra}</div>`;
+  $('result').innerHTML = `
+    <h2>Ready to approve (${r.approve.length})</h2>
+    ${r.approve.length ? `<button class="btn btn-gold" id="approveAll">Approve all (${r.approve.length})</button>` : ''}
+    ${r.approve.map((x) => row(x)).join('')}
+    <h2 style="margin-top:18px">Underpaid (${r.underpaid.length})</h2>
+    ${r.underpaid.map((x) => row(x, `<p class="meta">Received ${rs(x.paid)} of ${rs(x.order.total)}</p>`)).join('')}
+    <h2 style="margin-top:18px">Check by hand (${r.check.length})</h2>
+    ${r.check.map((x) => row(x, `<p class="meta">⚠ ${esc(x.reason)}</p>`)).join('')}
+    <p class="err" id="matchMsg"></p>`;
+  const all = $('approveAll');
+  if (all) all.onclick = applyResult;
+};
+
+async function applyResult() {
+  const r = lastResult;
+  $('approveAll').disabled = true;
+  let ok = 0;
+  try {
+    for (const x of r.approve) { await approve(x.order, x.line); ok++; }
+    for (const x of r.underpaid) {
+      await setStatus(x.order, { status: 'underpaid', receivedAmount: x.paid, matchedLine: x.line.slice(0, 500) });
+    }
+    for (const x of r.check) {
+      x.order.reason = x.reason;
+      if (x.order.status !== 'check') await setStatus(x.order, { status: 'check' });
+    }
+    $('matchMsg').textContent = `${ok} orders approved. Underpaid and check lists are in Orders.`;
+  } catch (e) {
+    $('matchMsg').textContent = `Stopped after ${ok}: ${e.message}`;
+  }
+  renderOrders();
+}
+
+// ---------- Settings ----------
+const PRICE_KEYS = ['standard_1', 'standard_2', 'standard_3', 'premium_1', 'premium_2', 'premium_3'];
+const DEFAULTS = { standard_1: 499, standard_2: 899, standard_3: 1299, premium_1: 899, premium_2: 1599, premium_3: 2299 };
+let qrData = '';
+
+async function loadSettings() {
+  const s = (await getDoc(doc(db, 'public', 'webPass'))).data() || {};
+  $('open').checked = !!s.open;
+  for (const k of PRICE_KEYS) $(k).value = s.prices?.[k] ?? DEFAULTS[k];
+  $('raastId').value = s.raastId || '';
+  $('accountTitle').value = s.accountTitle || 'PATANG-GO';
+  $('bankName').value = s.bankName || 'Bank Alfalah';
+  $('whatsappNo').value = s.whatsapp || '';
+  qrData = s.qr || '';
+  $('qrPreview').src = qrData;
+  $('qrPreview').classList.toggle('hidden', !qrData);
+}
+
+$('qrFile').onchange = () => {
+  const f = $('qrFile').files[0];
+  if (!f) return;
+  const img = new Image();
+  img.onload = () => {
+    const side = Math.min(600, Math.max(img.width, img.height));
+    const scale = side / Math.max(img.width, img.height);
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(img, 0, 0, c.width, c.height);
+    qrData = c.toDataURL('image/png');
+    if (qrData.length > 390000) qrData = c.toDataURL('image/jpeg', 0.9);
+    $('qrPreview').src = qrData;
+    $('qrPreview').classList.remove('hidden');
+  };
+  img.src = URL.createObjectURL(f);
+};
+
+$('settings').onsubmit = async (e) => {
+  e.preventDefault();
+  const prices = {};
+  for (const k of PRICE_KEYS) {
+    const v = Math.round(Number($(k).value));
+    if (!(v > 0 && v <= 100000)) { $('setMsg').textContent = 'Please check the prices.'; return; }
+    prices[k] = v;
+  }
+  try {
+    await setDoc(doc(db, 'public', 'webPass'), {
+      open: $('open').checked, prices,
+      raastId: $('raastId').value.trim(), accountTitle: $('accountTitle').value.trim(),
+      bankName: $('bankName').value.trim(), whatsapp: $('whatsappNo').value.trim(),
+      qr: qrData, updatedAt: serverTimestamp(),
+    });
+    $('setMsg').textContent = 'Saved.';
+  } catch (ex) {
+    $('setMsg').textContent = 'Could not save: ' + ex.message;
+  }
+};
+</script>
+</body>
+</html>
