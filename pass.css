@@ -94,6 +94,7 @@ ol.how li { margin-bottom: 4px; }
 .code { font-family: ui-monospace, Menlo, monospace; font-size: 1.3rem; font-weight: 800;
   letter-spacing: 0.06em; }
 .err { color: var(--danger); font-size: 0.9rem; margin-top: 8px; min-height: 1.2em; }
+input.bad { border-color: var(--danger); box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.15); }
 .hidden { display: none !important; }
 footer { border-top: 1px solid var(--line); margin-top: 32px; padding-block: 22px;
   font-size: 0.85rem; color: var(--muted); }

@@ -118,9 +118,25 @@ onAuthStateChanged(auth, async (user) => {
   }
   $('signIn').classList.add('hidden');
   $('panel').classList.remove('hidden');
-  loadOrders();
+  await loadOrders();
   loadSettings();
+  // Join hone wale doston ko pass khud (button ki zaroorat nahi).
+  giveWaiting().then((n) => {
+    if (n) $('ordersMsg').textContent = `✅ ${n} pass${n === 1 ? '' : 'es'} given to friends who joined.`;
+  }).catch(() => {});
 });
+
+// Thousands of orders: ek waqt mein kai (6) kaam, ek ek kar ke nahi.
+async function pool(items, size, fn) {
+  let i = 0;
+  const run = async () => {
+    while (i < items.length) {
+      const x = items[i++];
+      await fn(x);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(size, items.length) }, run));
+}
 
 document.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => {
   document.querySelectorAll('[data-tab]').forEach((x) => x.setAttribute('aria-selected', x === b));
@@ -244,14 +260,20 @@ async function approve(o, line) {
   await setStatus(o, { status: 'approved', matchedLine: String(line).slice(0, 500), granted, waiting });
 }
 
-$('retryWaiting').onclick = async () => {
+async function giveWaiting() {
   const list = orders.filter((o) => o.status === 'approved' && (o.waiting || []).length);
   let n = 0;
-  for (const o of list) {
+  await pool(list, 6, async (o) => {
     const before = o.waiting.length;
     await approve(o, o.matchedLine);
     n += before - o.waiting.length;
-  }
+  });
+  if (n) renderOrders();
+  return n;
+}
+
+$('retryWaiting').onclick = async () => {
+  const n = await giveWaiting();
   $('ordersMsg').textContent = `${n} more passes given.`;
   renderOrders();
 };
@@ -364,14 +386,18 @@ async function applyResult() {
   $('approveAll').disabled = true;
   let ok = 0;
   try {
-    for (const x of r.approve) { await approve(x.order, x.line); ok++; }
-    for (const x of r.underpaid) {
-      await setStatus(x.order, { status: 'underpaid', receivedAmount: x.paid, matchedLine: x.line.slice(0, 500) });
-    }
-    for (const x of r.check) {
+    // 6 ek saath: hazaron orders bhi jaldi.
+    await pool(r.approve, 6, async (x) => {
+      await approve(x.order, x.line);
+      ok++;
+      $('matchMsg').textContent = `Approving… ${ok} of ${r.approve.length}`;
+    });
+    await pool(r.underpaid, 6, (x) =>
+      setStatus(x.order, { status: 'underpaid', receivedAmount: x.paid, matchedLine: x.line.slice(0, 500) }));
+    await pool(r.check, 6, async (x) => {
       x.order.reason = x.reason;
       if (x.order.status !== 'check') await setStatus(x.order, { status: 'check' });
-    }
+    });
     $('matchMsg').textContent = `${ok} orders approved. Underpaid and check lists are in Orders.`;
   } catch (e) {
     $('matchMsg').textContent = `Stopped after ${ok}: ${e.message}`;

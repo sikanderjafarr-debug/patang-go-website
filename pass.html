@@ -84,6 +84,7 @@
       <input type="text" id="payerName" autocomplete="name" maxlength="60">
       <label class="field" for="paidAmount">Amount you paid (Rs)</label>
       <input type="number" id="paidAmount" inputmode="numeric" min="1">
+      <p class="err" id="amountErr"></p>
       <label class="field" for="payerRef">Transaction ID / TID / Ref number</label>
       <input type="text" id="payerRef" maxlength="60" placeholder="e.g. 558812345">
       <label class="field" for="payerPhone">Number you paid from <span class="hint">(JazzCash / Easypaisa / mobile, if no Ref)</span></label>
@@ -165,6 +166,7 @@ function renderTotal() {
   $('payAmount').textContent = rs(total);
   $('amountCopy').textContent = String(total);
   $('payAgain').textContent = rs(total);
+  checkAmount(total);
   $('emailErr').textContent = bad.length ? `Please check: ${bad.join(', ')}` :
     (good.length > 20 ? 'Up to 20 Gmails in one order, please.' : '');
   return { good, bad, unit, total };
@@ -178,6 +180,19 @@ $('buy').addEventListener('change', (e) => {
   if (['tier', 'days', 'from'].includes(t.name)) renderChoices();
 });
 $('emails').addEventListener('input', renderTotal);
+
+// Raqam bilkul total jitni (13 Nov): kam / zyada par laal line, aage nahi.
+function checkAmount(total) {
+  const v = $('paidAmount').value.trim();
+  const paid = Math.round(Number(v));
+  const bad = v !== '' && paid !== total;
+  $('amountErr').textContent = bad
+    ? `The amount must be exactly ${rs(total)} (your total). Please pay and write exactly ${rs(total)}.`
+    : '';
+  $('paidAmount').classList.toggle('bad', bad);
+  return !bad && v !== '';
+}
+$('paidAmount').addEventListener('input', () => checkAmount(renderTotal().total));
 
 document.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
   try {
@@ -202,12 +217,15 @@ $('buy').addEventListener('submit', async (e) => {
   if (!unit) return err('This pass is not on sale right now.');
   if (name.length < 2) return err('Please write your name as on your account.');
   if (!(paid > 0)) return err('Please write the amount you paid.');
+  if (paid !== total) {
+    checkAmount(total);
+    return err(`The amount must be exactly ${rs(total)}.`);
+  }
   if (ref.length < 4 && phone.replace(/\D/g, '').length < 10) {
     return err('Please write the Transaction ID / Ref, or the number you paid from.');
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(paidOn)) return err('Please choose the date you paid.');
   if (!/^\+?[0-9 -]{10,16}$/.test(wa)) return err('Please write your WhatsApp number, like 0300 1234567.');
-  if (paid > total && !confirm(`You paid more than ${rs(total)}. Continue?`)) return;
   err('');
   $('submit').disabled = true;
   $('submit').textContent = 'Sending…';
@@ -232,7 +250,7 @@ $('buy').addEventListener('submit', async (e) => {
 const STATUS = {
   pending: ['⏳', 'We are checking your payment', 'This usually takes a few hours. You can close this page: your pass will show in the Patang Go app once it is confirmed.'],
   check: ['⏳', 'We are checking your payment', 'This one needs a closer look. If we need anything, we will WhatsApp you.'],
-  approved: ['✅', 'Your pass is confirmed', 'Open the Patang Go app and sign in with your Gmail. Your pass shows there with a countdown to Basant.'],
+  approved: ['✅', 'Your pass is confirmed', 'Your countdown has started in the Patang Go app. Open the app and sign in with your Gmail to see your pass.'],
   underpaid: ['⚠️', 'Payment was less than the price', 'We will WhatsApp you: send the rest, or we return your money.'],
   refunded: ['↩️', 'Your money was returned', 'This order is closed.'],
   rejected: ['❌', 'We could not find this payment', 'If you did pay, please WhatsApp us with your receipt and this order code.'],
