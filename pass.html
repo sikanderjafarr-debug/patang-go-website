@@ -259,6 +259,10 @@ function watchOrder(code) {
         <h1>${title}</h1>
         <p class="lead">${text}</p>
         <p>Order code<br><span class="code">${esc(code)}</span></p>
+        <p><a class="btn ${o.status === 'approved' ? 'btn-gold' : 'btn-sky'}" id="getApp"
+          href="https://play.google.com/store/apps/details?id=com.patanggo.patang_go"
+          target="_blank" rel="noopener">▶ Get Patang Go on Google Play</a></p>
+        <p class="hint">Install the app and sign in with the same Gmail to see your pass.</p>
       </div>
       <div class="step">
         <p><b>${esc(passLine(o))}</b></p>
